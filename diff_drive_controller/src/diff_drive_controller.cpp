@@ -45,6 +45,51 @@ using controller_interface::interface_configuration_type;
 using hardware_interface::HW_IF_POSITION;
 using hardware_interface::HW_IF_VELOCITY;
 
+void DEBUG_PRINT_PARAM(rclcpp::Logger logger ,std::string prefix,rclcpp::Parameter p){
+   std::string type;
+
+   switch(p.get_type()){
+     case rclcpp::ParameterType::PARAMETER_NOT_SET :
+            type = 	"PARAMETER_NOT_SET";
+            break;
+     case rclcpp::ParameterType::PARAMETER_BOOL 	  : 
+            type = 	"PARAMETER_BOOL";
+            break;	
+     case rclcpp::ParameterType::PARAMETER_INTEGER : 
+            type = 	"PARAMETER_INTEGER";
+            break;		
+     case rclcpp::ParameterType::PARAMETER_DOUBLE 	: 
+            type = 	"PARAMETER_DOUBLE";
+            break;
+     case rclcpp::ParameterType::PARAMETER_STRING 	: 
+            type = 	"PARAMETER_NOT_SET";
+            break;
+     case rclcpp::ParameterType::PARAMETER_BYTE_ARRAY 	:  
+            type = 	"PARAMETER_BYTE_ARRAY";
+            break;
+     case rclcpp::ParameterType::PARAMETER_BOOL_ARRAY 	: 
+            type = 	"PARAMETER_BOOL_ARRAY";
+            break;	
+     case rclcpp::ParameterType::PARAMETER_INTEGER_ARRAY :  
+            type = 	"PARAMETER_INTEGER_ARRAY";
+            break;	
+     case rclcpp::ParameterType::PARAMETER_DOUBLE_ARRAY 	: break;	
+            type = 	"PARAMETER_DOUBLE_ARRAY";
+            break;
+     case rclcpp::ParameterType::PARAMETER_STRING_ARRAY  : break;
+            type = 	"PARAMETER_STRING_ARRAY";
+            break;	
+   }
+
+   RCLCPP_INFO(logger,"[%s] %s %s %s",
+   prefix.c_str(),
+   p.get_name().c_str(),
+   p.value_to_string().c_str(),
+   type.c_str()
+   );
+
+}
+
 DiffDriveController::DiffDriveController()
 : controller_interface::ControllerInterface() {}
 
@@ -60,6 +105,7 @@ DiffDriveController::init(const std::string & controller_name)
   try {
     auto node = get_node();
     // with the lifecycle node being initialized, we can declare parameters
+    RCLCPP_INFO(node->get_logger(),"Differential Drive controller init started");
     node->declare_parameter<std::vector<std::string>>("left_wheel_names", {});
     node->declare_parameter<std::vector<std::string>>("right_wheel_names", {});
 
@@ -106,6 +152,7 @@ DiffDriveController::init(const std::string & controller_name)
     node->declare_parameter<double>("angular.z.min_acceleration", 0.0);
     node->declare_parameter<double>("angular.z.max_jerk", 0.0);
     node->declare_parameter<double>("angular.z.min_jerk", 0.0);
+     RCLCPP_INFO(node->get_logger(),"Differential Drive controller init completed");
   } catch (const std::exception & e) {
     fprintf(stderr, "Exception thrown during init stage with message: %s \n", e.what());
     return controller_interface::return_type::ERROR;
@@ -259,6 +306,8 @@ controller_interface::return_type DiffDriveController::update()
 
   // Set wheels velocities:
   for (size_t index = 0; index < wheels.wheels_per_side; ++index) {
+    //RCLCPP_INFO(logger,"diff [%d] l %f r %f",index,velocity_left,velocity_right);
+
     registered_left_wheel_handles_[index].velocity.get().set_value(velocity_left);
     registered_right_wheel_handles_[index].velocity.get().set_value(velocity_right);
   }
@@ -269,7 +318,16 @@ controller_interface::return_type DiffDriveController::update()
 CallbackReturn DiffDriveController::on_configure(const rclcpp_lifecycle::State &)
 {
   auto logger = node_->get_logger();
-
+   RCLCPP_INFO(logger,"Differential Drive controller start configuration phase");
+/*
+   std::vector<std::string> param_names = {"left_wheel_names", "type", "right_wheel_names"};
+   std::vector<rclcpp::Parameter> params = node_->get_parameters(param_names);
+   for (auto &param : params)
+   {
+       RCLCPP_INFO(node_->get_logger(), "param name: %s, value: %s",
+                   param.get_name().c_str(), param.value_to_string().c_str());
+   }
+*/
   // update parameters
   left_wheel_names_ = node_->get_parameter("left_wheel_names").as_string_array();
   right_wheel_names_ = node_->get_parameter("right_wheel_names").as_string_array();
@@ -287,18 +345,30 @@ CallbackReturn DiffDriveController::on_configure(const rclcpp_lifecycle::State &
     RCLCPP_ERROR(logger, "Wheel names parameters are empty!");
     return CallbackReturn::ERROR;
   }
-
+  RCLCPP_INFO(logger,"D1");
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("wheel_separation"));
   wheel_params_.separation = node_->get_parameter("wheel_separation").as_double();
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("wheels_per_side"));
+  
   wheel_params_.wheels_per_side =
     static_cast<size_t>(node_->get_parameter("wheels_per_side").as_int());
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("wheel_radius"));
+  
   wheel_params_.radius = node_->get_parameter("wheel_radius").as_double();
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("wheel_separation_multiplier"));
+
   wheel_params_.separation_multiplier =
     node_->get_parameter("wheel_separation_multiplier").as_double();
+
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("left_wheel_radius_multiplier"));
   wheel_params_.left_radius_multiplier = node_->get_parameter(
     "left_wheel_radius_multiplier").as_double();
+
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("right_wheel_radius_multiplier"));
   wheel_params_.right_radius_multiplier = node_->get_parameter(
     "right_wheel_radius_multiplier").as_double();
-
+  RCLCPP_INFO(logger,"D1-E");
+  
   const auto wheels = wheel_params_;
 
   const double wheel_separation = wheels.separation_multiplier * wheels.separation;
@@ -306,30 +376,66 @@ CallbackReturn DiffDriveController::on_configure(const rclcpp_lifecycle::State &
   const double right_wheel_radius = wheels.right_radius_multiplier * wheels.radius;
 
   odometry_.setWheelParams(wheel_separation, left_wheel_radius, right_wheel_radius);
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("velocity_rolling_window_size"));
   odometry_.setVelocityRollingWindowSize(
-    node_->get_parameter(
-      "velocity_rolling_window_size").as_int());
-
+     static_cast<size_t>(node_->get_parameter(
+      "velocity_rolling_window_size").as_int())
+      );
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("odom_frame_id"));
   odom_params_.odom_frame_id = node_->get_parameter("odom_frame_id").as_string();
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("base_frame_id"));
   odom_params_.base_frame_id = node_->get_parameter("base_frame_id").as_string();
 
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("pose_covariance_diagonal"));
+ 
+/*
+  auto pose_diagonal_s = node_->get_parameter("pose_covariance_diagonal").as_string_array();
+  std::vector<double> pose_diagonal;
+  pose_diagonal.reserve(pose_diagonal_s.size());
+  std::transform(pose_diagonal_s.begin(), pose_diagonal_s.end(), pose_diagonal.begin(), [](const std::string& val)
+{
+    return std::stod(val);
+});
+*/
   auto pose_diagonal = node_->get_parameter("pose_covariance_diagonal").as_double_array();
+  RCLCPP_INFO(logger,"D1-F-AA");
   std::copy(
     pose_diagonal.begin(), pose_diagonal.end(),
     odom_params_.pose_covariance_diagonal.begin());
-
-  auto twist_diagonal =
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("twist_covariance_diagonal"));
+  /*
+  auto twist_diagonal_s =
+    node_->get_parameter("twist_covariance_diagonal").as_string_array();
+  std::vector<double> twist_diagonal;
+  twist_diagonal.reserve(pose_diagonal_s.size());
+  std::transform(twist_diagonal_s.begin(), twist_diagonal_s.end(), twist_diagonal.begin(), [](const std::string& val)
+{
+    return std::stod(val);
+});
+*/
+   auto twist_diagonal =
     node_->get_parameter("twist_covariance_diagonal").as_double_array();
   std::copy(
     twist_diagonal.begin(),
     twist_diagonal.end(), odom_params_.twist_covariance_diagonal.begin());
+ DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("open_loop"));
+
+  
+  //std::istringstream(node_->get_parameter("open_loop").as_string()) >> std::boolalpha >> odom_params_.open_loop;
 
   odom_params_.open_loop = node_->get_parameter("open_loop").as_bool();
+  //std::istringstream(node_->get_parameter("enable_odom_tf").as_string()) >> std::boolalpha >> odom_params_.enable_odom_tf ;
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("enable_odom_tf"));
   odom_params_.enable_odom_tf = node_->get_parameter("enable_odom_tf").as_bool();
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("cmd_vel_timeout"));
+
+  //std::istringstream(node_->get_parameter("publish_limited_velocity").as_string()) >> std::boolalpha >> publish_limited_velocity_ ;
 
   cmd_vel_timeout_ =
-    std::chrono::milliseconds{node_->get_parameter("cmd_vel_timeout").as_int()};
+    std::chrono::milliseconds{node_->get_parameter("cmd_vel_timeout").as_int()};   
+  DEBUG_PRINT_PARAM(logger,"D1",node_->get_parameter("publish_limited_velocity")); 
   publish_limited_velocity_ = node_->get_parameter("publish_limited_velocity").as_bool();
+  
 
   limiter_linear_ = SpeedLimiter(
     node_->get_parameter("linear.x.has_velocity_limits").as_bool(),
@@ -432,6 +538,7 @@ CallbackReturn DiffDriveController::on_configure(const rclcpp_lifecycle::State &
   odometry_transform_message.transforms.front().child_frame_id = odom_params_.base_frame_id;
 
   previous_update_timestamp_ = node_->get_clock()->now();
+  RCLCPP_INFO(logger,"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
   return CallbackReturn::SUCCESS;
 }
 
