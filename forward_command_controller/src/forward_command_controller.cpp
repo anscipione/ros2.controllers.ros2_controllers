@@ -44,7 +44,7 @@ ForwardCommandController::init(const std::string & controller_name)
 
   try {
     auto node = get_node();
-    node->declare_parameter<std::vector<std::string>>("joints", {});
+    node->declare_parameter<std::vector<std::string>>("joints", std::vector<std::string>());
 
     node->declare_parameter<std::string>("interface_name", "");
   } catch (const std::exception & e) {
@@ -65,7 +65,7 @@ CallbackReturn ForwardCommandController::on_configure(
     return CallbackReturn::ERROR;
   }
 
-  // Specialized, child controllers set interfaces before calling init function.
+  // Specialized, child controllers set interfaces before calling configure function.
   if (interface_name_.empty()) {
     interface_name_ = node_->get_parameter("interface_name").as_string();
   }

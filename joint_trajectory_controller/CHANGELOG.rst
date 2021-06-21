@@ -2,6 +2,20 @@
 Changelog for package joint_trajectory_controller
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.3.1 (2021-05-23)
+------------------
+* Reset external trajectory message upon activation (`#185 <https://github.com/ros-controls/ros2_controllers/issues/185>`_)
+  * Reset external trajectory message to prevent preserving the old goal on systems with hardware offsets
+  * Fix has_trajectory_msg() function: two wrongs were making a right so functionally things were fine
+* Contributors: Nathan Brooks, Matt Reynolds
+
+0.3.0 (2021-05-21)
+------------------
+* joint_trajectory_controller publishes state in node namespace (`#187 <https://github.com/ros-controls/ros2_controllers/issues/187>`_)
+* [JointTrajectoryController] Enable position, velocity and acceleration interfaces (`#140 <https://github.com/ros-controls/ros2_controllers/issues/140>`_)
+  * joint_trajectory_controller should not go into FINALIZED state when fails to configure, remain in UNCONFIGURED
+* Contributors: Bence Magyar, Denis Štogl
+
 0.2.1 (2021-05-03)
 ------------------
 * Migrate from deprecated controller_interface::return_type::SUCCESS -> OK (`#167 <https://github.com/ros-controls/ros2_controllers/issues/167>`_)
