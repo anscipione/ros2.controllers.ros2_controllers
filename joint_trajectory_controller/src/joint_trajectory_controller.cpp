@@ -73,8 +73,8 @@ JointTrajectoryController::init(const std::string & controller_name)
   return controller_interface::return_type::OK;
 }
 
-controller_interface::InterfaceConfiguration JointTrajectoryController::
-command_interface_configuration() const
+controller_interface::InterfaceConfiguration
+JointTrajectoryController::command_interface_configuration() const
 {
   controller_interface::InterfaceConfiguration conf;
   conf.type = controller_interface::interface_configuration_type::INDIVIDUAL;
@@ -87,8 +87,8 @@ command_interface_configuration() const
   return conf;
 }
 
-controller_interface::InterfaceConfiguration JointTrajectoryController::
-state_interface_configuration() const
+controller_interface::InterfaceConfiguration
+JointTrajectoryController::state_interface_configuration() const
 {
   controller_interface::InterfaceConfiguration conf;
   conf.type = controller_interface::interface_configuration_type::INDIVIDUAL;
@@ -951,7 +951,7 @@ bool JointTrajectoryController::validate_trajectory_msg(
     }
   }
 
-  rclcpp::Duration previous_traj_time(0);
+  rclcpp::Duration previous_traj_time(0ms);
   for (auto i = 0ul; i < trajectory.points.size(); ++i) {
     if ((i > 0) && (rclcpp::Duration(trajectory.points[i].time_from_start) <= previous_traj_time)) {
       RCLCPP_ERROR(
